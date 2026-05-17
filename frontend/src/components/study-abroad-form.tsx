@@ -87,10 +87,6 @@ const CONSULTATION_OPTIONS = [
     label: "Oui, je suis prêt(e) à investir",
   },
   {
-    value: "maybe",
-    label: "Peut-être, j'ai besoin de plus d'explications",
-  },
-  {
     value: "no-free",
     label: "Non, je cherche seulement des informations gratuites",
   },
@@ -103,7 +99,6 @@ const FORMAT_OPTIONS = [
 
 const INVESTMENT_500_OPTIONS = [
   { value: "yes", label: "Oui, je suis prêt(e) à investir 500 DH" },
-  { value: "maybe", label: "Peut-être, j'ai besoin de plus d'informations" },
   { value: "no", label: "Non, pas pour le moment" },
 ] as const;
 
@@ -273,7 +268,7 @@ export function StudyAbroadForm() {
       <div className="mx-auto w-full max-w-md text-center sm:max-w-lg lg:max-w-xl">
         <Card className="w-full border shadow-sm">
           <CardContent className="flex flex-col items-center px-5 py-10 sm:px-8 sm:py-12">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-2xl text-blue-600">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-50 text-2xl text-green-600">
               ✓
             </div>
             <CardTitle className="text-center text-lg sm:text-xl">
@@ -534,14 +529,12 @@ export function StudyAbroadForm() {
                   <FieldSeparator />
 
                   <FieldSet>
-                    <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50/80 px-4 py-3 text-sm text-blue-950">
+                    <div className="mb-4 rounded-lg border border-green-200 bg-green-50/80 px-4 py-3 text-sm text-green-950">
                       <p className="font-semibold">
                         Offre spéciale — 20 premières places
                       </p>
-                      <p className="mt-1 text-blue-900/90">
-                        Consultation avec l&apos;expert{" "}
-                        <span className="font-medium">M. Samir Benmakhlouf</span>{" "}
-                        à{" "}
+                      <p className="mt-1 text-green-900/90">
+                        Consultation personnalisée à{" "}
                         <span className="font-semibold">500 DH</span> au lieu de{" "}
                         <span className="line-through opacity-70">1 200 DH</span>{" "}
                         (tarif normal).
