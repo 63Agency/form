@@ -49,37 +49,25 @@ const AGE_OPTIONS = [
 ] as const;
 
 const STATUS_OPTIONS = [
-  { value: "eleve", label: "Élève", darija: "تلميذ" },
-  { value: "etudiant", label: "Étudiant(e)", darija: "طالب" },
-  { value: "salarie", label: "Salarié(e)", darija: "موظف" },
-  { value: "parent", label: "Parent", darija: "أب / أم" },
-  { value: "autre", label: "Autre", darija: "" },
+  { value: "eleve", label: "Élève" },
+  { value: "etudiant", label: "Étudiant(e)" },
+  { value: "salarie", label: "Salarié(e)" },
+  { value: "parent", label: "Parent" },
+  { value: "autre", label: "Autre" },
 ] as const;
 
 const EDUCATION_OPTIONS = [
-  { value: "bac-cours", label: "Bac en cours", darija: "باك داڤا" },
-  { value: "bac-obtenu", label: "Bac obtenu", darija: "حاصل على الباك" },
-  { value: "bac-plus", label: "Bac +1 / Bac +2", darija: "" },
-  { value: "licence", label: "Licence", darija: "" },
-  { value: "master", label: "Master", darija: "" },
+  { value: "bac-cours", label: "Bac en cours" },
+  { value: "bac-obtenu", label: "Bac obtenu" },
+  { value: "bac-plus", label: "Bac +1 / Bac +2" },
+  { value: "licence", label: "Licence" },
+  { value: "master", label: "Master" },
 ] as const;
 
 const FIELD_OPTIONS = [
-  {
-    value: "sure",
-    label: "Oui, je suis sûr(e)",
-    darija: "نعم، متأكد",
-  },
-  {
-    value: "idea",
-    label: "J'ai une idée mais pas sûr(e)",
-    darija: "عندي فكرة ولكن ما متأكدش",
-  },
-  {
-    value: "orientation",
-    label: "Non, j'ai besoin d'orientation",
-    darija: "لا، محتاج توجيه",
-  },
+  { value: "sure", label: "Oui, je suis sûr(e)" },
+  { value: "idea", label: "J'ai une idée mais pas sûr(e)" },
+  { value: "orientation", label: "Non, j'ai besoin d'orientation" },
 ] as const;
 
 const COUNTRY_OPTIONS = [
@@ -97,28 +85,20 @@ const CONSULTATION_OPTIONS = [
   {
     value: "yes-invest",
     label: "Oui, je suis prêt(e) à investir",
-    darija:
-      "نعم، مستعد/ة — نستثمر حيث غادي تعاوني ونتفادى الأخطاء",
   },
   {
     value: "maybe",
     label: "Peut-être, j'ai besoin de plus d'explications",
-    darija: "ممكن، ولكن خاصي نفهم أكثر",
   },
   {
     value: "no-free",
     label: "Non, je cherche seulement des informations gratuites",
-    darija: "لا، غير كنقلب على معلومات مجانية",
   },
 ] as const;
 
 const FORMAT_OPTIONS = [
-  { value: "presentiel", label: "Présentielle", darija: "حضورية" },
-  {
-    value: "distance",
-    label: "À distance / en ligne",
-    darija: "عن بُعد",
-  },
+  { value: "presentiel", label: "Présentielle" },
+  { value: "distance", label: "À distance / en ligne" },
 ] as const;
 
 const CONSULTATION_YES_VALUE = "yes-invest";
@@ -158,24 +138,6 @@ const initialForm: FormState = {
   whatsapp: "",
   email: "",
 };
-
-function OptionLabel({
-  fr,
-  darija,
-}: {
-  fr: string;
-  darija?: string;
-}) {
-  if (!darija) return <>{fr}</>;
-  return (
-    <>
-      {fr}{" "}
-      <span className="wrap-break-word font-normal text-muted-foreground">
-        ({darija})
-      </span>
-    </>
-  );
-}
 
 export function StudyAbroadForm() {
   const [step, setStep] = useState(1);
@@ -289,7 +251,7 @@ export function StudyAbroadForm() {
               Merci ! Nous vous contacterons sous 24h.
             </CardTitle>
             <CardDescription className="mt-2 text-center text-base sm:text-sm">
-              شكراً! غادي نتصلو بيك فـ 24 ساعة.
+              Votre demande a bien été enregistrée.
             </CardDescription>
           </CardContent>
         </Card>
@@ -303,9 +265,6 @@ export function StudyAbroadForm() {
         <h1 className="text-pretty px-0.5 text-lg font-semibold leading-snug text-foreground sm:text-xl lg:text-2xl">
           Votre Projet d&apos;Études à l&apos;Étranger Commence Ici
         </h1>
-        <p className="mt-2 text-base text-muted-foreground sm:text-sm">
-          مشروع الدراسة فالخارج كيبدا من هنا
-        </p>
       </header>
 
       <Card className="w-full shadow-md ring-1 ring-border sm:shadow-sm">
@@ -344,10 +303,7 @@ export function StudyAbroadForm() {
                 <>
                   <FieldSet>
                     <FieldLegend variant="label" className="text-base sm:text-sm">
-                      Quel est votre âge ?{" "}
-                      <span className="wrap-break-word font-normal text-muted-foreground">
-                        (شحال فعمرك؟)
-                      </span>
+                      Quel est votre âge ?
                     </FieldLegend>
                     <RadioGroup
                       className={radioGroupLayout}
@@ -379,10 +335,7 @@ export function StudyAbroadForm() {
 
                   <FieldSet>
                     <FieldLegend variant="label" className="text-base sm:text-sm">
-                      Vous êtes :{" "}
-                      <span className="wrap-break-word font-normal text-muted-foreground">
-                        (شنو الصفة ديالك داڤا؟)
-                      </span>
+                      Vous êtes :
                     </FieldLegend>
                     <RadioGroup
                       className={radioGroupLayout}
@@ -396,12 +349,7 @@ export function StudyAbroadForm() {
                           <FieldLabel key={opt.value} htmlFor={id}>
                             <Field orientation="horizontal">
                               <FieldContent>
-                                <FieldTitle>
-                                  <OptionLabel
-                                    fr={opt.label}
-                                    darija={opt.darija}
-                                  />
-                                </FieldTitle>
+                                <FieldTitle>{opt.label}</FieldTitle>
                               </FieldContent>
                               <RadioGroupItem
                                 value={opt.value}
@@ -420,10 +368,7 @@ export function StudyAbroadForm() {
               {step === 2 && (
                 <FieldSet>
                   <FieldLegend variant="label" className="text-base sm:text-sm">
-                    Quel est votre niveau d&apos;études actuel ?{" "}
-                    <span className="wrap-break-word font-normal text-muted-foreground">
-                      (شنو هو المستوى الدراسي ديالك داڤا؟)
-                    </span>
+                    Quel est votre niveau d&apos;études actuel ?
                   </FieldLegend>
                   <RadioGroup
                     className={radioGroupLayout}
@@ -437,12 +382,7 @@ export function StudyAbroadForm() {
                         <FieldLabel key={opt.value} htmlFor={id}>
                           <Field orientation="horizontal">
                             <FieldContent>
-                              <FieldTitle>
-                                <OptionLabel
-                                  fr={opt.label}
-                                  darija={opt.darija}
-                                />
-                              </FieldTitle>
+                              <FieldTitle>{opt.label}</FieldTitle>
                             </FieldContent>
                             <RadioGroupItem
                               value={opt.value}
@@ -461,10 +401,7 @@ export function StudyAbroadForm() {
                 <>
                   <FieldSet>
                     <FieldLegend variant="label" className="text-base sm:text-sm">
-                      Avez-vous déjà choisi une filière précise ?{" "}
-                      <span className="wrap-break-word font-normal text-muted-foreground">
-                        (واش محدد شنو باغي تقرا؟)
-                      </span>
+                      Avez-vous déjà choisi une filière précise ?
                     </FieldLegend>
                     <RadioGroup
                       className={radioGroupLayout3}
@@ -478,12 +415,7 @@ export function StudyAbroadForm() {
                           <FieldLabel key={opt.value} htmlFor={id}>
                             <Field orientation="horizontal">
                               <FieldContent>
-                                <FieldTitle>
-                                  <OptionLabel
-                                    fr={opt.label}
-                                    darija={opt.darija}
-                                  />
-                                </FieldTitle>
+                                <FieldTitle>{opt.label}</FieldTitle>
                               </FieldContent>
                               <RadioGroupItem
                                 value={opt.value}
@@ -505,13 +437,10 @@ export function StudyAbroadForm() {
                       className="text-base sm:text-sm"
                       id="countries-label"
                     >
-                      Dans quel(s) pays souhaitez-vous étudier ?{" "}
-                      <span className="wrap-break-word font-normal text-muted-foreground">
-                        (شنو هي الدول لي باغي تقرا فيها؟)
-                      </span>
+                      Dans quel(s) pays souhaitez-vous étudier ?
                     </FieldLegend>
                     <FieldDescription>
-                      Plusieurs choix possibles — ختار واحد أو أكثر
+                      Plusieurs choix possibles
                     </FieldDescription>
                     <FieldGroup
                       data-slot="checkbox-group"
@@ -551,11 +480,7 @@ export function StudyAbroadForm() {
                     >
                       Souhaitez-vous une consultation personnalisée pour
                       analyser votre dossier et définir la meilleure stratégie
-                      ?{" "}
-                      <span className="mt-1 block font-normal text-muted-foreground text-sm leading-relaxed sm:mt-0 sm:inline sm:text-xs">
-                        (واش باغي استشارة شخصية باش ندرسو ملفك ونعطيوك أحسن
-                        مسار؟)
-                      </span>
+                      ?
                     </FieldLabel>
                     <Select
                       value={form.consultation || undefined}
@@ -570,7 +495,7 @@ export function StudyAbroadForm() {
                       <SelectContent>
                         {CONSULTATION_OPTIONS.map((opt) => (
                           <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label} ({opt.darija})
+                            {opt.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -600,7 +525,7 @@ export function StudyAbroadForm() {
                         <SelectContent>
                           {FORMAT_OPTIONS.map((opt) => (
                             <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label} ({opt.darija})
+                              {opt.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
