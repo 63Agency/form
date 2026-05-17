@@ -241,7 +241,7 @@ export function StudyAbroadForm() {
 
   if (submitted) {
     return (
-      <div className="mx-auto flex min-h-[70vh] w-full max-w-lg flex-col items-center justify-center overflow-x-clip px-4 py-12 text-center sm:max-w-xl sm:px-6 sm:py-16 lg:max-w-2xl">
+      <div className="mx-auto w-full max-w-md text-center sm:max-w-lg lg:max-w-xl">
         <Card className="w-full border shadow-sm">
           <CardContent className="flex flex-col items-center px-5 py-10 sm:px-8 sm:py-12">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-2xl text-blue-600">
@@ -260,8 +260,8 @@ export function StudyAbroadForm() {
   }
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-lg overflow-x-clip px-4 pb-[max(3rem,env(safe-area-inset-bottom))] pt-6 sm:max-w-xl sm:px-6 sm:pt-10 lg:max-w-2xl lg:px-8">
-      <header className="mb-6 text-center sm:mb-8">
+    <div className="mx-auto w-full max-w-md sm:max-w-lg lg:max-w-xl">
+      <header className="mb-5 text-center sm:mb-6">
         <h1 className="text-pretty px-0.5 text-lg font-semibold leading-snug text-foreground sm:text-xl lg:text-2xl">
           Votre Projet d&apos;Études à l&apos;Étranger Commence Ici
         </h1>
