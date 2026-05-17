@@ -101,7 +101,14 @@ const FORMAT_OPTIONS = [
   { value: "distance", label: "À distance / en ligne" },
 ] as const;
 
+const INVESTMENT_500_OPTIONS = [
+  { value: "yes", label: "Oui, je suis prêt(e) à investir 500 DH" },
+  { value: "maybe", label: "Peut-être, j'ai besoin de plus d'informations" },
+  { value: "no", label: "Non, pas pour le moment" },
+] as const;
+
 const CONSULTATION_YES_VALUE = "yes-invest";
+const INVESTMENT_NOT_READY_VALUE = "no";
 
 const radioGroupLayout = "gap-2 md:grid md:grid-cols-2";
 const radioGroupLayout3 =
@@ -121,6 +128,7 @@ type FormState = {
   countries: string[];
   consultation: string;
   consultationFormat: string;
+  investment500: string;
   fullName: string;
   whatsapp: string;
   email: string;
@@ -134,6 +142,7 @@ const initialForm: FormState = {
   countries: [],
   consultation: "",
   consultationFormat: "",
+  investment500: "",
   fullName: "",
   whatsapp: "",
   email: "",
@@ -151,7 +160,11 @@ export function StudyAbroadForm() {
   );
 
   const showConsultationFormat =
-    form.consultation === CONSULTATION_YES_VALUE;
+    form.consultation === CONSULTATION_YES_VALUE &&
+    form.investment500 !== INVESTMENT_NOT_READY_VALUE;
+
+  const skipPersonalInfo =
+    form.investment500 === INVESTMENT_NOT_READY_VALUE;
 
   const update = useCallback(<K extends keyof FormState>(
     key: K,
@@ -160,6 +173,12 @@ export function StudyAbroadForm() {
     setForm((prev) => {
       const next = { ...prev, [key]: value };
       if (key === "consultation" && value !== CONSULTATION_YES_VALUE) {
+        next.consultationFormat = "";
+      }
+      if (
+        key === "investment500" &&
+        value === INVESTMENT_NOT_READY_VALUE
+      ) {
         next.consultationFormat = "";
       }
       return next;
@@ -197,7 +216,13 @@ export function StudyAbroadForm() {
       case 4:
         if (!form.consultation)
           return "Veuillez indiquer votre souhait de consultation.";
-        if (showConsultationFormat && !form.consultationFormat)
+        if (!form.investment500)
+          return "Veuillez indiquer si vous êtes prêt(e) à investir 500 DH.";
+        if (
+          form.investment500 !== INVESTMENT_NOT_READY_VALUE &&
+          showConsultationFormat &&
+          !form.consultationFormat
+        )
           return "Veuillez choisir le format de consultation.";
         return null;
       case 5:
@@ -221,6 +246,10 @@ export function StudyAbroadForm() {
       return;
     }
     setError(null);
+    if (step === 4 && form.investment500 === INVESTMENT_NOT_READY_VALUE) {
+      setSubmitted(true);
+      return;
+    }
     if (step < TOTAL_STEPS) setStep((n) => n + 1);
   };
 
@@ -502,6 +531,52 @@ export function StudyAbroadForm() {
                     </Select>
                   </Field>
 
+                  <FieldSeparator />
+
+                  <FieldSet>
+                    <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50/80 px-4 py-3 text-sm text-blue-950">
+                      <p className="font-semibold">
+                        Offre spéciale — 20 premières places
+                      </p>
+                      <p className="mt-1 text-blue-900/90">
+                        Consultation avec l&apos;expert{" "}
+                        <span className="font-medium">M. Samir Benmakhlouf</span>{" "}
+                        à{" "}
+                        <span className="font-semibold">500 DH</span> au lieu de{" "}
+                        <span className="line-through opacity-70">1 200 DH</span>{" "}
+                        (tarif normal).
+                      </p>
+                    </div>
+                    <FieldLegend variant="label" className="text-base sm:text-sm">
+                      Êtes-vous prêt(e) à investir 500 DH pour une consultation
+                      avec l&apos;expert M. Samir Benmakhlouf ?
+                    </FieldLegend>
+                    <RadioGroup
+                      className={radioGroupLayout}
+                      name="investment500"
+                      value={form.investment500}
+                      onValueChange={(v) => update("investment500", v)}
+                    >
+                      {INVESTMENT_500_OPTIONS.map((opt) => {
+                        const id = `study-invest-${opt.value}`;
+                        return (
+                          <FieldLabel key={opt.value} htmlFor={id}>
+                            <Field orientation="horizontal">
+                              <FieldContent>
+                                <FieldTitle>{opt.label}</FieldTitle>
+                              </FieldContent>
+                              <RadioGroupItem
+                                value={opt.value}
+                                id={id}
+                                className="size-5 sm:size-4"
+                              />
+                            </Field>
+                          </FieldLabel>
+                        );
+                      })}
+                    </RadioGroup>
+                  </FieldSet>
+
                   {showConsultationFormat && (
                     <Field>
                       <FieldLabel
@@ -621,7 +696,7 @@ export function StudyAbroadForm() {
               onClick={goNext}
               className={cn(primaryButtonClass)}
             >
-              Continue
+              {step === 4 && skipPersonalInfo ? "Terminer" : "Continue"}
             </Button>
           ) : (
             <Button
