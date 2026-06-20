@@ -61,19 +61,41 @@ function resolveCustomerEmail(email: string): string {
   return normalized;
 }
 
-export function buildPayzonePayload(booking: BookingData): PayzonePayload {
-  const appUrl = getAppUrl();
-  const customerEmail = resolveCustomerEmail(booking.email);
-  const customerName = booking.full_name.trim();
-  const timestamp = Math.floor(Date.now() / 1000);
+function buildUnixTimestampSeconds(): number {
+  return Math.floor(Date.now() / 1000);
+}
 
-  if (timestamp > 1_000_000_000_000) {
+function assertPayzonePayloadShape(payload: Record<string, unknown>): void {
+  if ("customerID" in payload) {
+    throw new Error(
+      'Payzone payload must use "customerId" (lowercase d), not "customerID".',
+    );
+  }
+
+  if (typeof payload.customerId !== "string" || !payload.customerId) {
+    throw new Error("Payzone payload requires a non-empty customerId string.");
+  }
+
+  if (typeof payload.timestamp !== "number" || !Number.isFinite(payload.timestamp)) {
+    throw new Error(
+      `Payzone timestamp must be a JSON number (Unix seconds), got ${typeof payload.timestamp}.`,
+    );
+  }
+
+  if (payload.timestamp > 1_000_000_000_000) {
     throw new Error(
       "Payzone timestamp must be Unix epoch seconds, not milliseconds.",
     );
   }
+}
 
-  return {
+export function buildPayzonePayload(booking: BookingData): PayzonePayload {
+  const appUrl = getAppUrl();
+  const customerEmail = resolveCustomerEmail(booking.email);
+  const customerName = booking.full_name.trim();
+  const timestamp = buildUnixTimestampSeconds();
+
+  const payload: PayzonePayload = {
     merchantAccount: getMerchantAccount(),
     timestamp,
     skin: "vps-1-vue",
@@ -95,6 +117,10 @@ export function buildPayzonePayload(booking: BookingData): PayzonePayload {
     failureUrl: `${appUrl}/failure`,
     cancelUrl: `${appUrl}/cancel`,
   };
+
+  assertPayzonePayloadShape(payload as unknown as Record<string, unknown>);
+
+  return payload;
 }
 
 /**
@@ -179,6 +205,8 @@ export function buildSignedPayzoneRequest(
         paywallUrl: apiFields.paywallUrl,
       })
     : JSON.stringify(payload);
+
+  assertPayzonePayloadShape(JSON.parse(jsonPayload) as Record<string, unknown>);
 
   const signature = signPayload(jsonPayload);
 
