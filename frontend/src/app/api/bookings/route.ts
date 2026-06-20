@@ -107,7 +107,12 @@ export async function POST(request: Request) {
 
     console.log("[POST /api/bookings] Payzone timestamp (seconds):", payzonePayload.timestamp);
     console.log("[POST /api/bookings] Payzone payload JSON:", jsonPayload);
-    console.log("[POST /api/bookings] Payzone signature (SHA256 hex):", signature);
+    console.log(
+      "[POST /api/bookings] Payzone signature (SHA256 hex, len=",
+      signature.length,
+      "):",
+      signature,
+    );
 
     return NextResponse.json<CreateBookingResponse>(
       {

@@ -99,15 +99,23 @@ export function buildPayzonePayload(booking: BookingData): PayzonePayload {
 
 /**
  * Payzone paywall signature (NOT HMAC):
- *   SHA256( paywallSecretKey + jsonPayload ) → lowercase hex
+ *   SHA256( paywallSecretKey + jsonPayload ) → 64-char lowercase hex
  *
  * Webhook verification uses HMAC separately in verifyPayzoneWebhookSignature().
  */
 export function signPayload(jsonPayload: string): string {
-  const secretKey = getSecretKey();
-  return createHash("sha256")
-    .update(secretKey + jsonPayload, "utf8")
+  const paywallSecretKey = getSecretKey();
+  const signature = createHash("sha256")
+    .update(paywallSecretKey + jsonPayload)
     .digest("hex");
+
+  if (signature.length !== 64) {
+    throw new Error(
+      `Payzone signature must be exactly 64 hex characters, got ${signature.length}`,
+    );
+  }
+
+  return signature;
 }
 
 /**
