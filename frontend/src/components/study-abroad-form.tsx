@@ -104,6 +104,7 @@ const INVESTMENT_500_OPTIONS = [
 
 const CONSULTATION_YES_VALUE = "yes-invest";
 const INVESTMENT_NOT_READY_VALUE = "no";
+const INVESTMENT_YES_VALUE = "yes";
 
 const radioGroupLayout = "gap-2 md:grid md:grid-cols-2";
 const radioGroupLayout3 =
@@ -124,8 +125,10 @@ type FormState = {
   consultation: string;
   consultationFormat: string;
   investment500: string;
-  fullName: string;
+  firstName: string;
+  lastName: string;
   whatsapp: string;
+  reservationDate: string;
   email: string;
 };
 
@@ -138,8 +141,10 @@ const initialForm: FormState = {
   consultation: "",
   consultationFormat: "",
   investment500: "",
-  fullName: "",
+  firstName: "",
+  lastName: "",
   whatsapp: "",
+  reservationDate: "",
   email: "",
 };
 
@@ -147,6 +152,7 @@ export function StudyAbroadForm() {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormState>(initialForm);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const progressPct = useMemo(
@@ -160,6 +166,14 @@ export function StudyAbroadForm() {
 
   const skipPersonalInfo =
     form.investment500 === INVESTMENT_NOT_READY_VALUE;
+
+  const minReservationDate = useMemo(() => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, "0");
+    const d = String(today.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, []);
 
   const update = useCallback(<K extends keyof FormState>(
     key: K,
@@ -221,10 +235,14 @@ export function StudyAbroadForm() {
           return "Veuillez choisir le format de consultation.";
         return null;
       case 5:
-        if (!form.fullName.trim())
-          return "Le prénom et nom sont obligatoires.";
+        if (!form.firstName.trim())
+          return "Le prénom est obligatoire.";
+        if (!form.lastName.trim())
+          return "Le nom est obligatoire.";
         if (!form.whatsapp.trim())
           return "Le numéro WhatsApp est obligatoire.";
+        if (!form.reservationDate)
+          return "Veuillez choisir une date de réservation.";
         if (!form.email.trim()) return "L’e-mail est obligatoire.";
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
           return "Adresse e-mail invalide.";
@@ -253,14 +271,77 @@ export function StudyAbroadForm() {
     if (step > 1) setStep((n) => n - 1);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const msg = validateStep(5);
     if (msg) {
       setError(msg);
       return;
     }
-    setSubmitted(true);
+
+    if (form.investment500 !== INVESTMENT_YES_VALUE) {
+      setSubmitted(true);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          age: form.age,
+          status: form.status,
+          educationLevel: form.educationLevel,
+          fieldChoice: form.fieldChoice,
+          countries: form.countries,
+          consultation: form.consultation,
+          consultationFormat: form.consultationFormat,
+          investment500: form.investment500,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          whatsapp: form.whatsapp,
+          reservationDate: form.reservationDate,
+          selectedDate: form.reservationDate,
+          email: form.email,
+        }),
+      });
+
+      if (!response.ok) {
+        setError("Une erreur est survenue. Veuillez réessayer.");
+        return;
+      }
+
+      const data = (await response.json()) as {
+        bookingId: string;
+        payzonePayload: Record<string, unknown>;
+        signature: string;
+        paywallUrl: string;
+      };
+
+      const payForm = document.createElement("form");
+      payForm.method = "POST";
+      payForm.action = data.paywallUrl;
+
+      const payloadInput = document.createElement("input");
+      payloadInput.type = "hidden";
+      payloadInput.name = "payload";
+      payloadInput.value = JSON.stringify(data.payzonePayload);
+
+      const signatureInput = document.createElement("input");
+      signatureInput.type = "hidden";
+      signatureInput.name = "signature";
+      signatureInput.value = data.signature;
+
+      payForm.appendChild(payloadInput);
+      payForm.appendChild(signatureInput);
+      document.body.appendChild(payForm);
+      payForm.submit();
+    } catch {
+      setError("Une erreur est survenue. Veuillez réessayer.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -605,43 +686,84 @@ export function StudyAbroadForm() {
 
               {step === 5 && (
                 <FieldGroup className="gap-4">
-                  <Field>
-                    <FieldLabel htmlFor="fullName" className="text-base sm:text-sm">
-                      Prénom et Nom{" "}
-                      <span className="text-destructive" aria-hidden>
-                        *
-                      </span>
-                    </FieldLabel>
-                    <Input
-                      id="fullName"
-                      type="text"
-                      autoComplete="name"
-                      value={form.fullName}
-                      onChange={(e) => update("fullName", e.target.value)}
-                      required
-                      placeholder="Ex. Fatima Zahra El Amrani"
-                      className="h-10 min-h-11 text-base md:h-9 md:min-h-0 md:text-sm"
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="whatsapp" className="text-base sm:text-sm">
-                      Numéro WhatsApp{" "}
-                      <span className="text-destructive" aria-hidden>
-                        *
-                      </span>
-                    </FieldLabel>
-                    <Input
-                      id="whatsapp"
-                      type="tel"
-                      inputMode="tel"
-                      autoComplete="tel"
-                      value={form.whatsapp}
-                      onChange={(e) => update("whatsapp", e.target.value)}
-                      required
-                      placeholder="+212 6 00 00 00 00"
-                      className="h-10 min-h-11 text-base md:h-9 md:min-h-0 md:text-sm"
-                    />
-                  </Field>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Field>
+                      <FieldLabel htmlFor="firstName" className="text-base sm:text-sm">
+                        Prénom{" "}
+                        <span className="text-destructive" aria-hidden>
+                          *
+                        </span>
+                      </FieldLabel>
+                      <Input
+                        id="firstName"
+                        type="text"
+                        autoComplete="given-name"
+                        value={form.firstName}
+                        onChange={(e) => update("firstName", e.target.value)}
+                        required
+                        placeholder="Ex. Fatima"
+                        className="h-10 min-h-11 text-base md:h-9 md:min-h-0 md:text-sm"
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="lastName" className="text-base sm:text-sm">
+                        Nom{" "}
+                        <span className="text-destructive" aria-hidden>
+                          *
+                        </span>
+                      </FieldLabel>
+                      <Input
+                        id="lastName"
+                        type="text"
+                        autoComplete="family-name"
+                        value={form.lastName}
+                        onChange={(e) => update("lastName", e.target.value)}
+                        required
+                        placeholder="Ex. El Amrani"
+                        className="h-10 min-h-11 text-base md:h-9 md:min-h-0 md:text-sm"
+                      />
+                    </Field>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Field>
+                      <FieldLabel htmlFor="whatsapp" className="text-base sm:text-sm">
+                        Numéro WhatsApp{" "}
+                        <span className="text-destructive" aria-hidden>
+                          *
+                        </span>
+                      </FieldLabel>
+                      <Input
+                        id="whatsapp"
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        value={form.whatsapp}
+                        onChange={(e) => update("whatsapp", e.target.value)}
+                        required
+                        placeholder="+212 6 00 00 00 00"
+                        className="h-10 min-h-11 text-base md:h-9 md:min-h-0 md:text-sm"
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="reservationDate" className="text-base sm:text-sm">
+                        Réserver une date{" "}
+                        <span className="text-destructive" aria-hidden>
+                          *
+                        </span>
+                      </FieldLabel>
+                      <Input
+                        id="reservationDate"
+                        type="date"
+                        value={form.reservationDate}
+                        min={minReservationDate}
+                        onChange={(e) =>
+                          update("reservationDate", e.target.value)
+                        }
+                        required
+                        className="h-10 min-h-11 text-base md:h-9 md:min-h-0 md:text-sm"
+                      />
+                    </Field>
+                  </div>
                   <Field>
                     <FieldLabel htmlFor="email" className="text-base sm:text-sm">
                       Email{" "}
@@ -696,8 +818,9 @@ export function StudyAbroadForm() {
               type="submit"
               form={FORM_ID}
               className={cn(primaryButtonClass)}
+              disabled={isSubmitting}
             >
-              Envoyer ma demande
+              {isSubmitting ? "Traitement en cours..." : "Envoyer ma demande"}
             </Button>
           )}
         </CardFooter>
