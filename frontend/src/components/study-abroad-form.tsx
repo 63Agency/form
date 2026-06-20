@@ -319,6 +319,9 @@ export function StudyAbroadForm() {
         paywallUrl: string;
       };
 
+      const payload = JSON.stringify(data.payzonePayload);
+      const signature = data.signature;
+
       const payForm = document.createElement("form");
       payForm.method = "POST";
       payForm.action = data.paywallUrl;
@@ -326,16 +329,21 @@ export function StudyAbroadForm() {
       const payloadInput = document.createElement("input");
       payloadInput.type = "hidden";
       payloadInput.name = "payload";
-      payloadInput.value = JSON.stringify(data.payzonePayload);
+      payloadInput.value = payload;
 
       const signatureInput = document.createElement("input");
       signatureInput.type = "hidden";
       signatureInput.name = "signature";
-      signatureInput.value = data.signature;
+      signatureInput.value = signature;
 
       payForm.appendChild(payloadInput);
       payForm.appendChild(signatureInput);
       document.body.appendChild(payForm);
+
+      console.log("[Form] payload length:", payload.length);
+      console.log("[Form] payload first 100:", payload.substring(0, 100));
+      console.log("[Form] signature:", signature);
+
       payForm.submit();
     } catch {
       setError("Une erreur est survenue. Veuillez réessayer.");

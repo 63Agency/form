@@ -97,22 +97,28 @@ export async function POST(request: Request) {
         paywallUrl,
       });
 
+    const signedPayload = jsonPayload;
+
     const clientPayload = JSON.stringify(payzonePayload);
-    if (clientPayload !== jsonPayload) {
+    if (clientPayload !== signedPayload) {
       console.warn("[POST /api/bookings] Payzone payload mismatch after API round-trip", {
-        signed: jsonPayload,
+        signed: signedPayload,
         clientWillSend: clientPayload,
       });
     }
 
-    console.log("[POST /api/bookings] Payzone timestamp (seconds):", payzonePayload.timestamp);
-    console.log("[POST /api/bookings] Payzone payload JSON:", jsonPayload);
+    console.log("[Payzone] signedPayload length:", signedPayload.length);
     console.log(
-      "[POST /api/bookings] Payzone signature (SHA256 hex, len=",
-      signature.length,
-      "):",
-      signature,
+      "[Payzone] signedPayload first 100 chars:",
+      signedPayload.substring(0, 100),
     );
+    console.log(
+      "[Payzone] signedPayload last 100 chars:",
+      signedPayload.substring(signedPayload.length - 100),
+    );
+    console.log("[Payzone] signature length:", signature.length);
+    console.log("[Payzone] signature:", signature);
+    console.log("[POST /api/bookings] Payzone timestamp (seconds):", payzonePayload.timestamp);
 
     return NextResponse.json<CreateBookingResponse>(
       {
