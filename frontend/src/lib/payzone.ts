@@ -99,7 +99,7 @@ export function buildPayzonePayload(booking: BookingData): PayzonePayload {
     merchantAccount: getMerchantAccount(),
     timestamp,
     skin: "vps-1-vue",
-    customerId: customerEmail,
+    customerId: booking.id,
     customerCountry: "MA",
     customerLocale: "fr_FR",
     customerName,
