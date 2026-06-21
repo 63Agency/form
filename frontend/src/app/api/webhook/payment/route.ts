@@ -5,6 +5,7 @@ import {
   sendConfirmationEmailPlaceholder,
 } from "@/lib/calendly";
 import { verifyPayzoneWebhookSignature } from "@/lib/payzone";
+import { sendPaymentFailure } from "@/lib/mailer";
 import { supabase } from "@/lib/supabase";
 import {
   isPayzonePaymentApproved,
@@ -119,6 +120,17 @@ async function handleFailedPayment(
   notification: PayzoneWebhookBody["notification"],
   fullPayload: PayzoneWebhookBody,
 ): Promise<void> {
+  const { data: booking, error: findError } = await supabase
+    .from("bookings")
+    .select("full_name, email, selected_date, selected_time")
+    .eq("id", bookingId)
+    .maybeSingle();
+
+  if (findError || !booking) {
+    console.error("[POST /api/webhook/payment] booking not found", findError);
+    return;
+  }
+
   const { error: updateError } = await supabase
     .from("bookings")
     .update({
@@ -141,6 +153,17 @@ async function handleFailedPayment(
 
   if (logError) {
     console.error("[POST /api/webhook/payment] failed log", logError);
+  }
+
+  try {
+    await sendPaymentFailure({
+      full_name: booking.full_name,
+      email: booking.email,
+      selected_date: booking.selected_date,
+      selected_time: booking.selected_time,
+    });
+  } catch (mailErr) {
+    console.error("[POST /api/webhook/payment] failure email", mailErr);
   }
 }
 

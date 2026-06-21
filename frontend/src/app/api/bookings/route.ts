@@ -4,6 +4,7 @@ import {
   buildSignedPayzoneRequest,
   getPaywallUrl,
 } from "@/lib/payzone";
+import { sendBookingConfirmation } from "@/lib/mailer";
 import { supabase } from "@/lib/supabase";
 import {
   formStateToBookingInsert,
@@ -70,6 +71,17 @@ export async function POST(request: Request) {
         { error: "Impossible de créer la réservation." },
         { status: 500 },
       );
+    }
+
+    try {
+      await sendBookingConfirmation({
+        full_name: insert.full_name,
+        email: insert.email,
+        selected_date: insert.selected_date,
+        selected_time: insert.selected_time,
+      });
+    } catch (mailErr) {
+      console.error("[POST /api/bookings] confirmation email", mailErr);
     }
 
     const { error: payzoneIdsError } = await supabase
