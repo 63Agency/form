@@ -4,6 +4,7 @@ CREATE TABLE bookings (
   email VARCHAR(255) NOT NULL,
   whatsapp VARCHAR(50),
   selected_date DATE NOT NULL,
+  selected_time TIME,
   age VARCHAR(50),
   status VARCHAR(100),
   education_level VARCHAR(100),

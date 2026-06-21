@@ -30,8 +30,10 @@ function isCreateBookingRequest(value: unknown): value is CreateBookingRequest {
     typeof o.lastName === "string" &&
     typeof o.whatsapp === "string" &&
     typeof o.reservationDate === "string" &&
+    typeof o.reservationTime === "string" &&
     typeof o.email === "string" &&
-    (o.selectedDate === undefined || typeof o.selectedDate === "string")
+    (o.selectedDate === undefined || typeof o.selectedDate === "string") &&
+    (o.selectedTime === undefined || typeof o.selectedTime === "string")
   );
 }
 

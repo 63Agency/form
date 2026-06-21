@@ -14,12 +14,14 @@ export type FormStatePayload = {
   lastName: string;
   whatsapp: string;
   reservationDate: string;
+  reservationTime: string;
   email: string;
 };
 
-/** API body may send selectedDate instead of / in addition to reservationDate */
+/** API body may send selectedDate/selectedTime instead of / in addition to reservation fields */
 export type CreateBookingRequest = FormStatePayload & {
   selectedDate?: string;
+  selectedTime?: string;
 };
 
 export type PaymentStatus = "pending" | "paid" | "failed";
@@ -30,6 +32,7 @@ export type BookingRow = {
   email: string;
   whatsapp: string | null;
   selected_date: string;
+  selected_time: string | null;
   age: string | null;
   status: string | null;
   education_level: string | null;
@@ -52,6 +55,7 @@ export type BookingInsert = {
   email: string;
   whatsapp: string | null;
   selected_date: string;
+  selected_time: string | null;
   age: string | null;
   status: string | null;
   education_level: string | null;
@@ -92,9 +96,29 @@ export type PayzoneWebhookBody = {
   notification: PayzoneWebhookNotification;
 };
 
+export const ALLOWED_RESERVATION_TIMES = [
+  "09:00",
+  "10:00",
+  "11:00",
+  "12:00",
+  "14:00",
+  "15:00",
+  "16:00",
+  "17:00",
+] as const;
+
+export type AllowedReservationTime = (typeof ALLOWED_RESERVATION_TIMES)[number];
+
 export function resolveSelectedDate(payload: CreateBookingRequest): string {
   const date = payload.selectedDate?.trim() || payload.reservationDate?.trim();
   return date;
+}
+
+export function resolveSelectedTime(
+  payload: CreateBookingRequest,
+): string | null {
+  const time = payload.selectedTime?.trim() || payload.reservationTime?.trim();
+  return time || null;
 }
 
 export function formStateToBookingInsert(
@@ -110,6 +134,7 @@ export function formStateToBookingInsert(
     email: payload.email.trim(),
     whatsapp: payload.whatsapp.trim() || null,
     selected_date: resolveSelectedDate(payload),
+    selected_time: resolveSelectedTime(payload),
     age: payload.age || null,
     status: payload.status || null,
     education_level: payload.educationLevel || null,
@@ -151,6 +176,21 @@ export function validateFormStatePayload(
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) {
     return "Format de date invalide (attendu : AAAA-MM-JJ).";
+  }
+
+  if (payload.investment500 === "yes") {
+    const selectedTime = resolveSelectedTime(payload);
+    if (!selectedTime) {
+      return "L'heure de consultation est obligatoire.";
+    }
+
+    if (
+      !ALLOWED_RESERVATION_TIMES.includes(
+        selectedTime as AllowedReservationTime,
+      )
+    ) {
+      return "Heure de consultation invalide.";
+    }
   }
 
   return null;

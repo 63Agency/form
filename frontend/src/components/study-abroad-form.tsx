@@ -102,6 +102,17 @@ const INVESTMENT_500_OPTIONS = [
   { value: "no", label: "Non, pas pour le moment" },
 ] as const;
 
+const RESERVATION_TIME_OPTIONS = [
+  "09:00",
+  "10:00",
+  "11:00",
+  "12:00",
+  "14:00",
+  "15:00",
+  "16:00",
+  "17:00",
+] as const;
+
 const CONSULTATION_YES_VALUE = "yes-invest";
 const INVESTMENT_NOT_READY_VALUE = "no";
 const INVESTMENT_YES_VALUE = "yes";
@@ -129,6 +140,7 @@ type FormState = {
   lastName: string;
   whatsapp: string;
   reservationDate: string;
+  reservationTime: string;
   email: string;
 };
 
@@ -145,6 +157,7 @@ const initialForm: FormState = {
   lastName: "",
   whatsapp: "",
   reservationDate: "",
+  reservationTime: "",
   email: "",
 };
 
@@ -243,6 +256,11 @@ export function StudyAbroadForm() {
           return "Le numéro WhatsApp est obligatoire.";
         if (!form.reservationDate)
           return "Veuillez choisir une date de réservation.";
+        if (
+          form.investment500 === INVESTMENT_YES_VALUE &&
+          !form.reservationTime
+        )
+          return "Veuillez choisir une heure de consultation.";
         if (!form.email.trim()) return "L’e-mail est obligatoire.";
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
           return "Adresse e-mail invalide.";
@@ -302,7 +320,9 @@ export function StudyAbroadForm() {
           lastName: form.lastName,
           whatsapp: form.whatsapp,
           reservationDate: form.reservationDate,
+          reservationTime: form.reservationTime,
           selectedDate: form.reservationDate,
+          selectedTime: form.reservationTime,
           email: form.email,
         }),
       });
@@ -732,26 +752,26 @@ export function StudyAbroadForm() {
                       />
                     </Field>
                   </div>
+                  <Field>
+                    <FieldLabel htmlFor="whatsapp" className="text-base sm:text-sm">
+                      Numéro WhatsApp{" "}
+                      <span className="text-destructive" aria-hidden>
+                        *
+                      </span>
+                    </FieldLabel>
+                    <Input
+                      id="whatsapp"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      value={form.whatsapp}
+                      onChange={(e) => update("whatsapp", e.target.value)}
+                      required
+                      placeholder="+212 6 00 00 00 00"
+                      className="h-10 min-h-11 text-base md:h-9 md:min-h-0 md:text-sm"
+                    />
+                  </Field>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Field>
-                      <FieldLabel htmlFor="whatsapp" className="text-base sm:text-sm">
-                        Numéro WhatsApp{" "}
-                        <span className="text-destructive" aria-hidden>
-                          *
-                        </span>
-                      </FieldLabel>
-                      <Input
-                        id="whatsapp"
-                        type="tel"
-                        inputMode="tel"
-                        autoComplete="tel"
-                        value={form.whatsapp}
-                        onChange={(e) => update("whatsapp", e.target.value)}
-                        required
-                        placeholder="+212 6 00 00 00 00"
-                        className="h-10 min-h-11 text-base md:h-9 md:min-h-0 md:text-sm"
-                      />
-                    </Field>
                     <Field>
                       <FieldLabel htmlFor="reservationDate" className="text-base sm:text-sm">
                         Réserver une date{" "}
@@ -770,6 +790,36 @@ export function StudyAbroadForm() {
                         required
                         className="h-10 min-h-11 text-base md:h-9 md:min-h-0 md:text-sm"
                       />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="reservationTime" className="text-base sm:text-sm">
+                        Heure de consultation{" "}
+                        {form.investment500 === INVESTMENT_YES_VALUE ? (
+                          <span className="text-destructive" aria-hidden>
+                            *
+                          </span>
+                        ) : null}
+                      </FieldLabel>
+                      <Select
+                        value={form.reservationTime || undefined}
+                        onValueChange={(value) =>
+                          update("reservationTime", value)
+                        }
+                      >
+                        <SelectTrigger
+                          id="reservationTime"
+                          className="h-10 min-h-11 w-full text-base md:h-9 md:min-h-0 md:text-sm"
+                        >
+                          <SelectValue placeholder="Choisir l'heure" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {RESERVATION_TIME_OPTIONS.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </Field>
                   </div>
                   <Field>
