@@ -1,9 +1,11 @@
 const CALENDLY_API_BASE = "https://api.calendly.com";
 
 export type CalendlyBookingInput = {
+  id?: string;
   full_name: string;
   email: string;
   selected_date: string;
+  selected_time?: string | null;
 };
 
 export type CalendlyEventResult = {
@@ -27,6 +29,11 @@ type OneOffEventTypeResponse = {
 export async function createCalendlyEvent(
   booking: CalendlyBookingInput,
 ): Promise<CalendlyEventResult> {
+  console.log("[Calendly] Starting event creation for booking:", booking.id);
+  console.log("[Calendly] Using user URI:", process.env.CALENDLY_USER_URI);
+  console.log("[Calendly] selected_date:", booking.selected_date);
+  console.log("[Calendly] selected_time:", booking.selected_time);
+
   const apiKey = process.env.CALENDLY_API_KEY?.trim();
   const host = process.env.CALENDLY_USER_URI?.trim();
 
@@ -67,6 +74,16 @@ export async function createCalendlyEvent(
     });
 
     const responseText = await response.text();
+    let responseBody: unknown = responseText;
+
+    try {
+      responseBody = JSON.parse(responseText);
+    } catch {
+      // keep raw text for logging
+    }
+
+    console.log("[Calendly] API response status:", response.status);
+    console.log("[Calendly] API response body:", JSON.stringify(responseBody));
 
     if (!response.ok) {
       console.error(

@@ -78,21 +78,6 @@ async function handleFailedPayment(
     return;
   }
 
-  const { error: updateError } = await supabase
-    .from("bookings")
-    .update({
-      payment_status: "failed",
-      payzone_charge_id: notification.id,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", bookingId);
-
-  if (updateError) {
-    console.error("[webhook/payment] failed status update", updateError);
-  } else {
-    console.log("[webhook/payment] payment_status updated to failed", bookingId);
-  }
-
   const { error: logError } = await supabase.from("payment_logs").insert({
     booking_id: bookingId,
     event_type: "payment_failed",
@@ -115,6 +100,17 @@ async function handleFailedPayment(
     console.log("[webhook/payment] failure email sent OK", booking.email);
   } catch (mailErr) {
     console.error("[webhook/payment] failure email FAILED", mailErr);
+  }
+
+  const { error: deleteError } = await supabase
+    .from("bookings")
+    .delete()
+    .eq("id", bookingId);
+
+  if (deleteError) {
+    console.error("[webhook/payment] failed booking delete", deleteError);
+  } else {
+    console.log("[webhook/payment] failed booking deleted", bookingId);
   }
 }
 
@@ -166,6 +162,9 @@ export async function POST(request: Request) {
 
     if (isPayzonePaymentApproved(notification)) {
       console.log("[webhook/payment] payment APPROVED → finalizing", bookingId);
+      console.log("[Calendly] payment approved — finalize will create Calendly event", {
+        bookingId,
+      });
       await handleSuccessfulPayment(bookingId, notification, fullPayload);
     } else if (isPayzonePaymentFailed(notification.status)) {
       console.log("[webhook/payment] payment FAILED → updating", bookingId);

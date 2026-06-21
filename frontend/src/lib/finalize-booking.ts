@@ -107,9 +107,11 @@ export async function finalizeBookingAfterPayment(
     try {
       console.log("[finalize-booking] creating Calendly event", bookingId);
       const calendlyResult = await createCalendlyEvent({
+        id: row.id,
         full_name: row.full_name,
         email: row.email,
         selected_date: row.selected_date,
+        selected_time: row.selected_time,
       });
 
       if (calendlyResult.event_uri) {
