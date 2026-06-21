@@ -1,25 +1,16 @@
 import { NextResponse } from "next/server";
 
-import { createCalendlyEvent } from "@/lib/calendly";
+import { finalizeBookingAfterPayment } from "@/lib/finalize-booking";
 import { verifyPayzoneWebhookSignature } from "@/lib/payzone";
-import { sendBookingConfirmation, sendPaymentFailure } from "@/lib/mailer";
+import { sendPaymentFailure } from "@/lib/mailer";
 import { supabase } from "@/lib/supabase";
 import {
+  extractPayzoneNotification,
   isPayzonePaymentApproved,
   isPayzonePaymentFailed,
-  isPayzoneWebhookBody,
-  isValidUuid,
+  resolveBookingIdFromNotification,
   type PayzoneWebhookBody,
 } from "@/types/booking";
-
-type BookingForWebhook = {
-  id: string;
-  full_name: string;
-  email: string;
-  selected_date: string;
-  selected_time: string | null;
-  calendly_event_uri: string | null;
-};
 
 function getCallbackSignature(request: Request): string | null {
   return (
@@ -33,33 +24,22 @@ async function handleSuccessfulPayment(
   notification: PayzoneWebhookBody["notification"],
   fullPayload: PayzoneWebhookBody,
 ): Promise<void> {
-  const { data: booking, error: findError } = await supabase
-    .from("bookings")
-    .select(
-      "id, full_name, email, selected_date, selected_time, calendly_event_uri",
-    )
-    .eq("id", bookingId)
-    .maybeSingle();
+  console.log("[webhook/payment] handleSuccessfulPayment", {
+    bookingId,
+    status: notification.status,
+    notificationId: notification.id,
+  });
 
-  if (findError || !booking) {
-    console.error("[POST /api/webhook/payment] booking not found", findError);
-    return;
-  }
-
-  const bookingRow = booking as BookingForWebhook;
-
-  const { error: updateError } = await supabase
+  const { error: chargeUpdateError } = await supabase
     .from("bookings")
     .update({
-      payment_status: "paid",
       payzone_charge_id: notification.id,
       updated_at: new Date().toISOString(),
     })
     .eq("id", bookingId);
 
-  if (updateError) {
-    console.error("[POST /api/webhook/payment] paid update", updateError);
-    return;
+  if (chargeUpdateError) {
+    console.error("[webhook/payment] payzone_charge_id update", chargeUpdateError);
   }
 
   const { error: logError } = await supabase.from("payment_logs").insert({
@@ -70,49 +50,11 @@ async function handleSuccessfulPayment(
   });
 
   if (logError) {
-    console.error("[POST /api/webhook/payment] success log", logError);
+    console.error("[webhook/payment] success log insert", logError);
   }
 
-  if (!bookingRow.calendly_event_uri) {
-    try {
-      const calendlyResult = await createCalendlyEvent({
-        full_name: bookingRow.full_name,
-        email: bookingRow.email,
-        selected_date: bookingRow.selected_date,
-      });
-
-      if (calendlyResult.event_uri) {
-        const { error: calendlyUpdateError } = await supabase
-          .from("bookings")
-          .update({
-            calendly_event_uri: calendlyResult.event_uri,
-            calendly_status: "active",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", bookingId);
-
-        if (calendlyUpdateError) {
-          console.error(
-            "[POST /api/webhook/payment] calendly update",
-            calendlyUpdateError,
-          );
-        }
-      }
-    } catch (calendlyErr) {
-      console.error("[POST /api/webhook/payment] calendly", calendlyErr);
-    }
-  }
-
-  try {
-    await sendBookingConfirmation({
-      full_name: bookingRow.full_name,
-      email: bookingRow.email,
-      selected_date: bookingRow.selected_date,
-      selected_time: bookingRow.selected_time,
-    });
-  } catch (mailErr) {
-    console.error("[POST /api/webhook/payment] confirmation email", mailErr);
-  }
+  const result = await finalizeBookingAfterPayment(bookingId, "webhook");
+  console.log("[webhook/payment] finalize result", result);
 }
 
 async function handleFailedPayment(
@@ -120,6 +62,11 @@ async function handleFailedPayment(
   notification: PayzoneWebhookBody["notification"],
   fullPayload: PayzoneWebhookBody,
 ): Promise<void> {
+  console.log("[webhook/payment] handleFailedPayment", {
+    bookingId,
+    status: notification.status,
+  });
+
   const { data: booking, error: findError } = await supabase
     .from("bookings")
     .select("full_name, email, selected_date, selected_time")
@@ -127,7 +74,7 @@ async function handleFailedPayment(
     .maybeSingle();
 
   if (findError || !booking) {
-    console.error("[POST /api/webhook/payment] booking not found", findError);
+    console.error("[webhook/payment] booking not found for failure", findError);
     return;
   }
 
@@ -141,7 +88,9 @@ async function handleFailedPayment(
     .eq("id", bookingId);
 
   if (updateError) {
-    console.error("[POST /api/webhook/payment] failed update", updateError);
+    console.error("[webhook/payment] failed status update", updateError);
+  } else {
+    console.log("[webhook/payment] payment_status updated to failed", bookingId);
   }
 
   const { error: logError } = await supabase.from("payment_logs").insert({
@@ -152,18 +101,20 @@ async function handleFailedPayment(
   });
 
   if (logError) {
-    console.error("[POST /api/webhook/payment] failed log", logError);
+    console.error("[webhook/payment] failed log insert", logError);
   }
 
   try {
+    console.log("[webhook/payment] sending failure email to", booking.email);
     await sendPaymentFailure({
       full_name: booking.full_name,
       email: booking.email,
       selected_date: booking.selected_date,
       selected_time: booking.selected_time,
     });
+    console.log("[webhook/payment] failure email sent OK", booking.email);
   } catch (mailErr) {
-    console.error("[POST /api/webhook/payment] failure email", mailErr);
+    console.error("[webhook/payment] failure email FAILED", mailErr);
   }
 }
 
@@ -171,47 +122,65 @@ export async function POST(request: Request) {
   const rawBody = await request.text();
   const signatureHeader = getCallbackSignature(request);
 
+  console.log("[webhook/payment] received callback", {
+    bodyLength: rawBody.length,
+    hasSignature: Boolean(signatureHeader),
+    preview: rawBody.slice(0, 300),
+  });
+
   if (!verifyPayzoneWebhookSignature(rawBody, signatureHeader)) {
-    console.error("[POST /api/webhook/payment] invalid webhook signature");
+    console.error("[webhook/payment] INVALID SIGNATURE — check PAYZONE_NOTIFICATION_KEY");
     return NextResponse.json({ ok: true }, { status: 200 });
   }
+
+  console.log("[webhook/payment] signature OK");
 
   try {
     let parsed: unknown;
     try {
       parsed = JSON.parse(rawBody);
     } catch {
-      console.error("[POST /api/webhook/payment] invalid JSON");
+      console.error("[webhook/payment] invalid JSON body");
       return NextResponse.json({ ok: true }, { status: 200 });
     }
 
-    if (!isPayzoneWebhookBody(parsed)) {
-      console.error("[POST /api/webhook/payment] invalid payload shape");
+    const notification = extractPayzoneNotification(parsed);
+    if (!notification) {
+      console.error("[webhook/payment] invalid payload shape", parsed);
       return NextResponse.json({ ok: true }, { status: 200 });
     }
 
-    const { notification } = parsed;
-    const bookingId = notification.id;
+    console.log("[webhook/payment] notification parsed", {
+      id: notification.id,
+      status: notification.status,
+      transactions: notification.transactions?.length ?? 0,
+    });
 
-    if (!isValidUuid(bookingId)) {
-      console.error("[POST /api/webhook/payment] invalid booking id", bookingId);
+    const bookingId = resolveBookingIdFromNotification(notification);
+    if (!bookingId) {
+      console.error("[webhook/payment] could not resolve booking UUID from", notification);
       return NextResponse.json({ ok: true }, { status: 200 });
     }
+
+    const fullPayload = parsed as PayzoneWebhookBody;
 
     if (isPayzonePaymentApproved(notification)) {
-      await handleSuccessfulPayment(bookingId, notification, parsed);
+      console.log("[webhook/payment] payment APPROVED → finalizing", bookingId);
+      await handleSuccessfulPayment(bookingId, notification, fullPayload);
     } else if (isPayzonePaymentFailed(notification.status)) {
-      await handleFailedPayment(bookingId, notification, parsed);
+      console.log("[webhook/payment] payment FAILED → updating", bookingId);
+      await handleFailedPayment(bookingId, notification, fullPayload);
     } else {
-      console.info(
-        "[POST /api/webhook/payment] unhandled status",
-        notification.status,
-      );
+      console.info("[webhook/payment] unhandled status", {
+        bookingId,
+        status: notification.status,
+        transactions: notification.transactions,
+      });
     }
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {
-    console.error("[POST /api/webhook/payment]", err);
+    console.error("[webhook/payment] unexpected error", err);
     return NextResponse.json({ ok: true }, { status: 200 });
   }
 }

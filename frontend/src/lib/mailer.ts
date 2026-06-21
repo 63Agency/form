@@ -59,6 +59,14 @@ function formatTimeFr(time: string | null): string {
 export async function sendBookingConfirmation(
   booking: MailBooking,
 ): Promise<void> {
+  console.log("[mailer] sendBookingConfirmation start", {
+    to: booking.email,
+    full_name: booking.full_name,
+    selected_date: booking.selected_date,
+    selected_time: booking.selected_time,
+    hasMailPassword: Boolean(process.env.MAIL_PASSWORD?.trim()),
+  });
+
   const transporter = createTransport();
   const dateLabel = formatDateFr(booking.selected_date);
   const timeLabel = formatTimeFr(booking.selected_time);
@@ -77,15 +85,23 @@ export async function sendBookingConfirmation(
     </div>
   `.trim();
 
-  await transporter.sendMail({
+  const info = await transporter.sendMail({
     from: `"Unicoach" <${SMTP_USER}>`,
     to: booking.email,
     subject: "Confirmation de votre réservation - Unicoach",
     html,
   });
+
+  console.log("[mailer] sendBookingConfirmation OK", {
+    to: booking.email,
+    messageId: info.messageId,
+    response: info.response,
+  });
 }
 
 export async function sendPaymentFailure(booking: MailBooking): Promise<void> {
+  console.log("[mailer] sendPaymentFailure start", { to: booking.email });
+
   const transporter = createTransport();
 
   const html = `
@@ -97,10 +113,15 @@ export async function sendPaymentFailure(booking: MailBooking): Promise<void> {
     </div>
   `.trim();
 
-  await transporter.sendMail({
+  const info = await transporter.sendMail({
     from: `"Unicoach" <${SMTP_USER}>`,
     to: booking.email,
     subject: "Problème de paiement - Unicoach",
     html,
+  });
+
+  console.log("[mailer] sendPaymentFailure OK", {
+    to: booking.email,
+    messageId: info.messageId,
   });
 }

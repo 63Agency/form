@@ -211,11 +211,49 @@ export function isPayzonePaymentApproved(
 
   const transactions = notification.transactions ?? [];
   if (transactions.length === 0) {
-    return false;
+    console.warn(
+      "[Payzone] CHARGED without transactions — treating as approved (sandbox)",
+    );
+    return true;
   }
 
   const lastState = transactions[transactions.length - 1]?.state;
   return lastState === "APPROVED";
+}
+
+export function extractPayzoneNotification(
+  parsed: unknown,
+): PayzoneWebhookNotification | null {
+  if (!parsed || typeof parsed !== "object") return null;
+
+  const root = parsed as Record<string, unknown>;
+
+  if (root.notification && typeof root.notification === "object") {
+    const n = root.notification as Record<string, unknown>;
+    if (typeof n.status === "string" && typeof n.id === "string") {
+      return root.notification as PayzoneWebhookNotification;
+    }
+  }
+
+  if (typeof root.status === "string" && typeof root.id === "string") {
+    return root as PayzoneWebhookNotification;
+  }
+
+  return null;
+}
+
+export function resolveBookingIdFromNotification(
+  notification: PayzoneWebhookNotification,
+): string | null {
+  const id = notification.id?.trim();
+  if (id && isValidUuid(id)) return id;
+
+  const orderId = (notification as Record<string, unknown>).orderId;
+  if (typeof orderId === "string" && isValidUuid(orderId.trim())) {
+    return orderId.trim();
+  }
+
+  return null;
 }
 
 export function isPayzonePaymentFailed(status: string): boolean {

@@ -70,6 +70,18 @@ export function SuccessContent() {
         }
         const data = (await response.json()) as BookingRow;
         if (!cancelled) setBooking(data);
+
+        // Fallback: finalize + send email if Payzone webhook was delayed
+        if (!cancelled) {
+          try {
+            const finalizeRes = await fetch(`/api/bookings/${bookingId}/finalize`, {
+              method: "POST",
+            });
+            console.log("[success] finalize response", finalizeRes.status);
+          } catch (finalizeErr) {
+            console.error("[success] finalize failed", finalizeErr);
+          }
+        }
       } catch {
         if (!cancelled) setBooking(null);
       } finally {

@@ -72,6 +72,14 @@ export async function POST(request: Request) {
       );
     }
 
+    console.log("[POST /api/bookings] pending booking saved (payment not yet done)", {
+      bookingId: data.id,
+      email: insert.email,
+      selected_date: insert.selected_date,
+      selected_time: insert.selected_time,
+      note: "Confirmation email will be sent AFTER successful payment",
+    });
+
     const paywallUrl = getPaywallUrl();
     const { payload: payzonePayload, jsonPayload, signature } =
       buildSignedPayzoneRequest(
