@@ -19,7 +19,7 @@ function getMailPassword(): string {
 
 function createTransport() {
   return nodemailer.createTransport({
-    host: "smtp.hostinger.com",
+    host: "smtp.titan.email",
     port: 465,
     secure: true,
     auth: {
