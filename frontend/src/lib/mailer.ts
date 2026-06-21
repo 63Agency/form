@@ -131,7 +131,7 @@ export async function sendBookingConfirmation(
         Nous avons hâte de vous accompagner dans votre projet. Notre équipe reste
         disponible si vous avez la moindre question.
       </p>
-      <p style="color: #666; font-size: 14px;">${COACH_NAME} — 63 Agency</p>
+      <p style="color: #666; font-size: 14px;">${COACH_NAME}</p>
     </div>
   `.trim();
 
