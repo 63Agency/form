@@ -9,6 +9,8 @@ export type MailBooking = {
 
 const COACH_NAME = "Unicoach";
 const SESSION_DURATION_MINUTES = 30;
+const UNICOACH_LOGO_URL =
+  "https://eamnpfvgrolafhxpovxf.supabase.co/storage/v1/object/public/assets/Unicoach.jpg";
 
 function getMailUser(): string {
   const user = process.env.MAIL_USER?.trim();
@@ -110,7 +112,8 @@ export async function sendBookingConfirmation(
   const timeLabel = formatTimeFr(booking.selected_time);
 
   const html = `
-    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111; max-width: 560px;">
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111; max-width: 560px; margin: 0 auto; background-color: #ffffff; padding: 32px 24px; border-radius: 8px;">
+      <img src="${UNICOACH_LOGO_URL}" alt="UniCoach.Me" style="max-width:200px; display:block; margin:0 auto 24px auto;">
       <h2 style="color: #2563eb;">Confirmation de votre session</h2>
       <p>Bonjour ${escapeHtml(booking.full_name)},</p>
       <p>
