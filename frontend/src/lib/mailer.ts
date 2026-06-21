@@ -93,7 +93,7 @@ export async function sendPaymentFailure(booking: MailBooking): Promise<void> {
       <h2 style="color: #dc2626;">Problème de paiement</h2>
       <p>Bonjour ${escapeHtml(booking.full_name)},</p>
       <p>Votre paiement n'a pas été traité. Veuillez réessayer ou contacter notre équipe.</p>
-      <p style="color: #666; font-size: 14px;">Unicoach — 63 Agency</p>
+      <p style="color: #666; font-size: 14px;">Unicoach</p>
     </div>
   `.trim();
 

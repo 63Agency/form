@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
 
-import {
-  createCalendlyEvent,
-  sendConfirmationEmailPlaceholder,
-} from "@/lib/calendly";
+import { createCalendlyEvent } from "@/lib/calendly";
 import { verifyPayzoneWebhookSignature } from "@/lib/payzone";
-import { sendPaymentFailure } from "@/lib/mailer";
+import { sendBookingConfirmation, sendPaymentFailure } from "@/lib/mailer";
 import { supabase } from "@/lib/supabase";
 import {
   isPayzonePaymentApproved,
@@ -20,6 +17,7 @@ type BookingForWebhook = {
   full_name: string;
   email: string;
   selected_date: string;
+  selected_time: string | null;
   calendly_event_uri: string | null;
 };
 
@@ -37,7 +35,9 @@ async function handleSuccessfulPayment(
 ): Promise<void> {
   const { data: booking, error: findError } = await supabase
     .from("bookings")
-    .select("id, full_name, email, selected_date, calendly_event_uri")
+    .select(
+      "id, full_name, email, selected_date, selected_time, calendly_event_uri",
+    )
     .eq("id", bookingId)
     .maybeSingle();
 
@@ -73,45 +73,45 @@ async function handleSuccessfulPayment(
     console.error("[POST /api/webhook/payment] success log", logError);
   }
 
-  if (bookingRow.calendly_event_uri) {
-    return;
+  if (!bookingRow.calendly_event_uri) {
+    try {
+      const calendlyResult = await createCalendlyEvent({
+        full_name: bookingRow.full_name,
+        email: bookingRow.email,
+        selected_date: bookingRow.selected_date,
+      });
+
+      if (calendlyResult.event_uri) {
+        const { error: calendlyUpdateError } = await supabase
+          .from("bookings")
+          .update({
+            calendly_event_uri: calendlyResult.event_uri,
+            calendly_status: "active",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", bookingId);
+
+        if (calendlyUpdateError) {
+          console.error(
+            "[POST /api/webhook/payment] calendly update",
+            calendlyUpdateError,
+          );
+        }
+      }
+    } catch (calendlyErr) {
+      console.error("[POST /api/webhook/payment] calendly", calendlyErr);
+    }
   }
 
   try {
-    const calendlyResult = await createCalendlyEvent({
+    await sendBookingConfirmation({
       full_name: bookingRow.full_name,
       email: bookingRow.email,
       selected_date: bookingRow.selected_date,
+      selected_time: bookingRow.selected_time,
     });
-
-    if (calendlyResult.event_uri) {
-      const { error: calendlyUpdateError } = await supabase
-        .from("bookings")
-        .update({
-          calendly_event_uri: calendlyResult.event_uri,
-          calendly_status: "active",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", bookingId);
-
-      if (calendlyUpdateError) {
-        console.error(
-          "[POST /api/webhook/payment] calendly update",
-          calendlyUpdateError,
-        );
-        return;
-      }
-    }
-
-    sendConfirmationEmailPlaceholder({
-      to: bookingRow.email,
-      fullName: bookingRow.full_name,
-      selectedDate: bookingRow.selected_date,
-      eventUri: calendlyResult.event_uri,
-      schedulingUrl: calendlyResult.scheduling_url,
-    });
-  } catch (calendlyErr) {
-    console.error("[POST /api/webhook/payment] calendly", calendlyErr);
+  } catch (mailErr) {
+    console.error("[POST /api/webhook/payment] confirmation email", mailErr);
   }
 }
 
@@ -172,10 +172,8 @@ export async function POST(request: Request) {
   const signatureHeader = getCallbackSignature(request);
 
   if (!verifyPayzoneWebhookSignature(rawBody, signatureHeader)) {
-    return NextResponse.json(
-      { error: "Invalid webhook signature." },
-      { status: 401 },
-    );
+    console.error("[POST /api/webhook/payment] invalid webhook signature");
+    return NextResponse.json({ ok: true }, { status: 200 });
   }
 
   try {
