@@ -16,12 +16,17 @@ export const metadata: Metadata = {
   title: "Votre Projet d'Études à l'Étranger Commence Ici",
   description:
     "Formulaire multi-étapes : projet d'études à l'étranger — orientation et consultation.",
+  icons: {
+    icon: [{ url: "/logo/Unicoach.jpg", type: "image/jpeg" }],
+    shortcut: [{ url: "/logo/Unicoach.jpg", type: "image/jpeg" }],
+    apple: [{ url: "/logo/Unicoach.jpg", type: "image/jpeg" }],
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#ffffff",
+  themeColor: "#0f1b2a",
 };
 
 export default function RootLayout({

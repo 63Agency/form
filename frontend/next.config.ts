@@ -11,6 +11,14 @@ const nextConfig: NextConfig = {
     root: frontendRoot,
   },
   outputFileTracingRoot: frontendRoot,
+  async rewrites() {
+    return [
+      {
+        source: "/favicon.ico",
+        destination: "/logo/Unicoach.jpg",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
