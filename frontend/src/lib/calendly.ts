@@ -1,4 +1,5 @@
 const CALENDLY_API_BASE = "https://api.calendly.com";
+const CALENDLY_TIMEZONE = "Africa/Casablanca";
 
 export type CalendlyBookingInput = {
   id?: string;
@@ -22,9 +23,45 @@ type OneOffEventTypeResponse = {
   resource?: OneOffEventTypeResource;
 };
 
+function calendlyHeaders(apiKey: string): HeadersInit {
+  return {
+    Authorization: `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+}
+
+/** Ensures YYYY-MM-DD for Calendly date_setting. */
+function toYyyyMmDd(dateStr: string): string | null {
+  const trimmed = dateStr.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toISOString().slice(0, 10);
+}
+
+function extractOneOffResource(body: unknown): OneOffEventTypeResource | null {
+  if (!body || typeof body !== "object") {
+    return null;
+  }
+
+  const resource = (body as OneOffEventTypeResponse).resource;
+  if (!resource || typeof resource !== "object") {
+    return null;
+  }
+
+  return resource;
+}
+
 /**
- * Creates a one-off Calendly meeting constrained to the booking date.
- * Returns null URIs on failure so payment flows are not interrupted.
+ * Creates a one-off Calendly event type constrained to the booking date.
+ * Returns the one-off event type URI and scheduling URL for the client.
  */
 export async function createCalendlyEvent(
   booking: CalendlyBookingInput,
@@ -47,15 +84,21 @@ export async function createCalendlyEvent(
     return { event_uri: null, scheduling_url: null };
   }
 
+  const eventDate = toYyyyMmDd(booking.selected_date);
+  if (!eventDate) {
+    console.error("[Calendly] Invalid selected_date:", booking.selected_date);
+    return { event_uri: null, scheduling_url: null };
+  }
+
   const requestBody = {
     name: `Consultation - ${booking.full_name.trim()}`,
     host,
     duration: 30,
-    timezone: "Africa/Casablanca",
+    timezone: CALENDLY_TIMEZONE,
     date_setting: {
       type: "date_range",
-      start_date: booking.selected_date,
-      end_date: booking.selected_date,
+      start_date: eventDate,
+      end_date: eventDate,
     },
     location: {
       kind: "custom",
@@ -63,13 +106,15 @@ export async function createCalendlyEvent(
     },
   };
 
+  console.log(
+    "[Calendly] POST one_off_event_types request:",
+    JSON.stringify(requestBody),
+  );
+
   try {
     const response = await fetch(`${CALENDLY_API_BASE}/one_off_event_types`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: calendlyHeaders(apiKey),
       body: JSON.stringify(requestBody),
     });
 
@@ -82,8 +127,11 @@ export async function createCalendlyEvent(
       // keep raw text for logging
     }
 
-    console.log("[Calendly] API response status:", response.status);
-    console.log("[Calendly] API response body:", JSON.stringify(responseBody));
+    console.log(
+      "[Calendly] POST one_off_event_types response:",
+      response.status,
+      responseBody,
+    );
 
     if (!response.ok) {
       console.error(
@@ -93,20 +141,24 @@ export async function createCalendlyEvent(
       return { event_uri: null, scheduling_url: null };
     }
 
-    let data: OneOffEventTypeResponse;
-    try {
-      data = JSON.parse(responseText) as OneOffEventTypeResponse;
-    } catch {
-      console.error("[Calendly] Invalid JSON response:", responseText);
+    const resource = extractOneOffResource(responseBody);
+    if (!resource) {
+      console.error("[Calendly] Response missing resource object:", responseBody);
       return { event_uri: null, scheduling_url: null };
     }
 
-    const event_uri = data.resource?.uri ?? null;
-    const scheduling_url = data.resource?.scheduling_url ?? null;
+    const event_uri = resource.uri ?? null;
+    const scheduling_url = resource.scheduling_url ?? null;
 
-    if (!event_uri && !scheduling_url) {
-      console.error("[Calendly] Response missing event URI and scheduling URL:", data);
+    if (!event_uri || !scheduling_url) {
+      console.error("[Calendly] Response missing uri or scheduling_url:", resource);
+      return { event_uri, scheduling_url };
     }
+
+    console.log("[Calendly] one-off event type created", {
+      event_uri,
+      scheduling_url,
+    });
 
     return { event_uri, scheduling_url };
   } catch (err) {
