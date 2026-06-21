@@ -1,4 +1,4 @@
-import { createCalendlyEvent } from "@/lib/calendly";
+import { createCoachingSessionEvent } from "@/lib/googleCalendar";
 import { sendBookingConfirmation } from "@/lib/mailer";
 import { supabase } from "@/lib/supabase";
 
@@ -9,14 +9,14 @@ type BookingToFinalize = {
   selected_date: string;
   selected_time: string | null;
   payment_status: string;
-  calendly_event_uri: string | null;
+  google_calendar_event_id: string | null;
 };
 
 export type FinalizeBookingResult = {
   bookingId: string;
   paymentStatus: string;
   emailSent: boolean;
-  calendlyCreated: boolean;
+  calendarEventCreated: boolean;
   alreadyFinalized: boolean;
 };
 
@@ -51,7 +51,7 @@ async function markConfirmationEmailSent(bookingId: string): Promise<void> {
 
 /**
  * Runs after successful payment (webhook or success-page fallback):
- * mark paid → Calendly → confirmation email.
+ * mark paid → Google Calendar → confirmation email (Nodemailer).
  */
 export async function finalizeBookingAfterPayment(
   bookingId: string,
@@ -62,7 +62,7 @@ export async function finalizeBookingAfterPayment(
   const { data: booking, error: findError } = await supabase
     .from("bookings")
     .select(
-      "id, full_name, email, selected_date, selected_time, payment_status, calendly_event_uri",
+      "id, full_name, email, selected_date, selected_time, payment_status, google_calendar_event_id",
     )
     .eq("id", bookingId)
     .maybeSingle();
@@ -74,7 +74,8 @@ export async function finalizeBookingAfterPayment(
 
   const row = booking as BookingToFinalize;
   const alreadyPaid = row.payment_status === "paid";
-  let calendlyCreated = false;
+  let calendarEventCreated = false;
+  let googleCalendarEventId = row.google_calendar_event_id;
 
   console.log("[finalize-booking] booking loaded", {
     bookingId: row.id,
@@ -103,47 +104,63 @@ export async function finalizeBookingAfterPayment(
     console.log("[finalize-booking] booking already paid", bookingId);
   }
 
-  if (!row.calendly_event_uri) {
+  if (!googleCalendarEventId) {
     try {
-      console.log("[finalize-booking] creating Calendly event", bookingId);
-      const calendlyResult = await createCalendlyEvent({
-        id: row.id,
-        full_name: row.full_name,
+      console.log("[finalize-booking] creating Google Calendar event", bookingId);
+      const calendarEvent = await createCoachingSessionEvent({
+        fullName: row.full_name,
         email: row.email,
-        selected_date: row.selected_date,
-        selected_time: row.selected_time,
+        selectedDate: row.selected_date,
+        selectedTime: row.selected_time,
       });
 
-      if (calendlyResult.event_uri) {
-        const { error: calendlyUpdateError } = await supabase
+      if (calendarEvent.id) {
+        const { error: calendarUpdateError } = await supabase
           .from("bookings")
           .update({
-            calendly_event_uri: calendlyResult.event_uri,
-            calendly_status: "active",
+            google_calendar_event_id: calendarEvent.id,
             updated_at: new Date().toISOString(),
           })
           .eq("id", bookingId);
 
-        if (calendlyUpdateError) {
-          console.error("[finalize-booking] calendly update failed", calendlyUpdateError);
+        if (calendarUpdateError) {
+          console.error(
+            "[finalize-booking] google calendar update failed",
+            calendarUpdateError,
+          );
         } else {
-          calendlyCreated = true;
-          console.log("[finalize-booking] Calendly event saved", calendlyResult.event_uri);
+          calendarEventCreated = true;
+          googleCalendarEventId = calendarEvent.id;
+          console.log(
+            "[finalize-booking] Google Calendar event saved",
+            calendarEvent.id,
+          );
         }
       } else {
-        console.warn("[finalize-booking] Calendly returned no event_uri", bookingId);
+        console.warn(
+          "[finalize-booking] Google Calendar returned no event id",
+          bookingId,
+        );
       }
-    } catch (calendlyErr) {
-      console.error("[finalize-booking] Calendly error", calendlyErr);
+    } catch (calendarErr) {
+      console.error("[finalize-booking] Google Calendar error", calendarErr);
     }
   } else {
-    console.log("[finalize-booking] Calendly already exists", row.calendly_event_uri);
+    console.log(
+      "[finalize-booking] Google Calendar event already exists",
+      googleCalendarEventId,
+    );
   }
 
   let emailSent = false;
   const emailAlreadySent = await wasConfirmationEmailSent(bookingId);
 
-  if (emailAlreadySent) {
+  if (!googleCalendarEventId) {
+    console.warn(
+      "[finalize-booking] skipping confirmation email — calendar event not created",
+      bookingId,
+    );
+  } else if (emailAlreadySent) {
     console.log("[finalize-booking] confirmation email already sent", bookingId);
   } else {
     try {
@@ -173,7 +190,7 @@ export async function finalizeBookingAfterPayment(
     bookingId,
     paymentStatus: "paid",
     emailSent,
-    calendlyCreated,
+    calendarEventCreated,
     alreadyFinalized: alreadyPaid && emailAlreadySent,
   };
 }

@@ -162,9 +162,10 @@ export async function POST(request: Request) {
 
     if (isPayzonePaymentApproved(notification)) {
       console.log("[webhook/payment] payment APPROVED → finalizing", bookingId);
-      console.log("[Calendly] payment approved — finalize will create Calendly event", {
-        bookingId,
-      });
+      console.log(
+        "[GoogleCalendar] payment approved — finalize will create calendar event",
+        { bookingId },
+      );
       await handleSuccessfulPayment(bookingId, notification, fullPayload);
     } else if (isPayzonePaymentFailed(notification.status)) {
       console.log("[webhook/payment] payment FAILED → updating", bookingId);

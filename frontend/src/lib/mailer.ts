@@ -7,7 +7,16 @@ export type MailBooking = {
   selected_time: string | null;
 };
 
-const SMTP_USER = "unicoach@63agency.ma";
+const COACH_NAME = "Unicoach";
+const SESSION_DURATION_MINUTES = 30;
+
+function getMailUser(): string {
+  const user = process.env.MAIL_USER?.trim();
+  if (!user) {
+    throw new Error("MAIL_USER is not configured.");
+  }
+  return user;
+}
 
 function getMailPassword(): string {
   const password = process.env.MAIL_PASSWORD?.trim();
@@ -17,13 +26,39 @@ function getMailPassword(): string {
   return password;
 }
 
+/** Resolves SMTP host from env override or email domain. */
+function resolveSmtpHost(email: string): string {
+  const hostOverride = process.env.MAIL_SMTP_HOST?.trim();
+  if (hostOverride) {
+    return hostOverride;
+  }
+
+  const domain = email.split("@")[1]?.toLowerCase() ?? "";
+
+  if (domain === "gmail.com" || domain === "googlemail.com") {
+    return "smtp.gmail.com";
+  }
+
+  if (domain === "63agency.ma") {
+    return "smtp.titan.email";
+  }
+
+  if (domain.endsWith(".onmicrosoft.com") || domain === "outlook.com") {
+    return "smtp.office365.com";
+  }
+
+  return "smtp.gmail.com";
+}
+
 function createTransport() {
+  const user = getMailUser();
+
   return nodemailer.createTransport({
-    host: "smtp.titan.email",
+    host: resolveSmtpHost(user),
     port: 465,
     secure: true,
     auth: {
-      user: SMTP_USER,
+      user,
       pass: getMailPassword(),
     },
   });
@@ -59,11 +94,14 @@ function formatTimeFr(time: string | null): string {
 export async function sendBookingConfirmation(
   booking: MailBooking,
 ): Promise<void> {
+  const mailUser = getMailUser();
+
   console.log("[mailer] sendBookingConfirmation start", {
     to: booking.email,
     full_name: booking.full_name,
     selected_date: booking.selected_date,
     selected_time: booking.selected_time,
+    smtpHost: resolveSmtpHost(mailUser),
     hasMailPassword: Boolean(process.env.MAIL_PASSWORD?.trim()),
   });
 
@@ -72,23 +110,32 @@ export async function sendBookingConfirmation(
   const timeLabel = formatTimeFr(booking.selected_time);
 
   const html = `
-    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111;">
-      <h2 style="color: #2563eb;">Confirmation de votre réservation</h2>
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111; max-width: 560px;">
+      <h2 style="color: #2563eb;">Confirmation de votre session</h2>
       <p>Bonjour ${escapeHtml(booking.full_name)},</p>
+      <p>
+        Merci pour votre confiance. Votre paiement a bien été reçu et votre session
+        de coaching est confirmée.
+      </p>
       <ul>
-        <li><strong>Nom complet :</strong> ${escapeHtml(booking.full_name)}</li>
-        <li><strong>Date de consultation :</strong> ${escapeHtml(dateLabel)}</li>
-        <li><strong>Heure de consultation :</strong> ${escapeHtml(timeLabel)}</li>
+        <li><strong>Client :</strong> ${escapeHtml(booking.full_name)}</li>
+        <li><strong>Date de la session :</strong> ${escapeHtml(dateLabel)}</li>
+        <li><strong>Heure de la session :</strong> ${escapeHtml(timeLabel)}</li>
+        <li><strong>Durée :</strong> ${SESSION_DURATION_MINUTES} minutes</li>
+        <li><strong>Coach :</strong> ${COACH_NAME}</li>
       </ul>
-      <p>Votre réservation est confirmée. Notre équipe vous contactera sur WhatsApp pour confirmer les détails.</p>
-      <p style="color: #666; font-size: 14px;">Unicoach — 63 Agency</p>
+      <p>
+        Nous avons hâte de vous accompagner dans votre projet. Notre équipe reste
+        disponible si vous avez la moindre question.
+      </p>
+      <p style="color: #666; font-size: 14px;">${COACH_NAME} — 63 Agency</p>
     </div>
   `.trim();
 
   const info = await transporter.sendMail({
-    from: `"Unicoach" <${SMTP_USER}>`,
+    from: `"${COACH_NAME}" <${mailUser}>`,
     to: booking.email,
-    subject: "Confirmation de votre réservation - Unicoach",
+    subject: "Confirmation de votre session - Unicoach",
     html,
   });
 
@@ -100,6 +147,8 @@ export async function sendBookingConfirmation(
 }
 
 export async function sendPaymentFailure(booking: MailBooking): Promise<void> {
+  const mailUser = getMailUser();
+
   console.log("[mailer] sendPaymentFailure start", { to: booking.email });
 
   const transporter = createTransport();
@@ -109,12 +158,12 @@ export async function sendPaymentFailure(booking: MailBooking): Promise<void> {
       <h2 style="color: #dc2626;">Problème de paiement</h2>
       <p>Bonjour ${escapeHtml(booking.full_name)},</p>
       <p>Votre paiement n'a pas été traité. Veuillez réessayer ou contacter notre équipe.</p>
-      <p style="color: #666; font-size: 14px;">Unicoach</p>
+      <p style="color: #666; font-size: 14px;">${COACH_NAME}</p>
     </div>
   `.trim();
 
   const info = await transporter.sendMail({
-    from: `"Unicoach" <${SMTP_USER}>`,
+    from: `"${COACH_NAME}" <${mailUser}>`,
     to: booking.email,
     subject: "Problème de paiement - Unicoach",
     html,

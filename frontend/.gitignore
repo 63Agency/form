@@ -34,6 +34,10 @@ yarn-error.log*
 .env*
 .env.local
 
+# Google service account credentials
+/secrets/
+secrets/google-service-account.json
+
 # vercel
 .vercel
 

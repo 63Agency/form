@@ -46,6 +46,7 @@ export type BookingRow = {
   payzone_order_id: string | null;
   calendly_event_uri: string | null;
   calendly_status: string | null;
+  google_calendar_event_id: string | null;
   created_at: string;
   updated_at: string;
 };
