@@ -127,6 +127,9 @@ const countryGridClass =
 const primaryButtonClass =
   "h-11 w-full border-transparent bg-blue-600 text-base text-white hover:bg-blue-700 focus-visible:ring-blue-500/40 sm:h-10 sm:flex-1 sm:text-sm";
 
+const nativeSelectClass =
+  "h-10 w-full cursor-pointer rounded-md border border-input bg-background px-3 py-2 text-base text-foreground sm:h-9 sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring";
+
 type FormState = {
   age: string;
   status: string;
@@ -174,8 +177,7 @@ export function StudyAbroadForm() {
   );
 
   const showConsultationFormat =
-    form.consultation === CONSULTATION_YES_VALUE &&
-    form.investment500 !== INVESTMENT_NOT_READY_VALUE;
+    form.investment500 === INVESTMENT_YES_VALUE;
 
   const skipPersonalInfo =
     form.investment500 === INVESTMENT_NOT_READY_VALUE;
@@ -202,6 +204,10 @@ export function StudyAbroadForm() {
         value === INVESTMENT_NOT_READY_VALUE
       ) {
         next.consultationFormat = "";
+        next.consultation = "no-free";
+      }
+      if (key === "investment500" && value === INVESTMENT_YES_VALUE) {
+        next.consultation = CONSULTATION_YES_VALUE;
       }
       return next;
     });
@@ -236,13 +242,10 @@ export function StudyAbroadForm() {
           return "Sélectionnez au moins un pays.";
         return null;
       case 4:
-        if (!form.consultation)
-          return "Veuillez indiquer votre souhait de consultation.";
         if (!form.investment500)
           return "Veuillez indiquer si vous êtes prêt(e) à investir 500 DH.";
         if (
-          form.investment500 !== INVESTMENT_NOT_READY_VALUE &&
-          showConsultationFormat &&
+          form.investment500 === INVESTMENT_YES_VALUE &&
           !form.consultationFormat
         )
           return "Veuillez choisir le format de consultation.";
@@ -606,78 +609,40 @@ export function StudyAbroadForm() {
 
               {step === 4 && (
                 <div className="flex flex-col gap-6">
+                  <div className="rounded-lg border border-green-200 bg-green-50/80 px-4 py-3 text-sm text-green-950">
+                    <p className="font-semibold">
+                      Offre spéciale — 20 premières places
+                    </p>
+                    <p className="mt-1 text-green-900/90">
+                      Consultation personnalisée à{" "}
+                      <span className="font-semibold">500 DH</span> au lieu de{" "}
+                      <span className="line-through opacity-70">1 200 DH</span>{" "}
+                      (tarif normal).
+                    </p>
+                  </div>
+
                   <Field>
                     <FieldLabel
-                      htmlFor="consultation"
+                      htmlFor="investment500"
                       className="text-base font-medium sm:text-sm"
                     >
-                      Souhaitez-vous une consultation personnalisée pour
-                      analyser votre dossier et définir la meilleure stratégie
-                      ?
-                    </FieldLabel>
-                    <Select
-                      value={form.consultation || undefined}
-                      onValueChange={(v) => update("consultation", v)}
-                    >
-                      <SelectTrigger
-                        id="consultation"
-                        className="h-10 w-full min-w-0 text-base sm:h-9 sm:text-sm"
-                      >
-                        <SelectValue placeholder="— Choisir —" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CONSULTATION_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-
-                  <FieldSeparator />
-
-                  <FieldSet>
-                    <div className="mb-4 rounded-lg border border-green-200 bg-green-50/80 px-4 py-3 text-sm text-green-950">
-                      <p className="font-semibold">
-                        Offre spéciale — 20 premières places
-                      </p>
-                      <p className="mt-1 text-green-900/90">
-                        Consultation personnalisée à{" "}
-                        <span className="font-semibold">500 DH</span> au lieu de{" "}
-                        <span className="line-through opacity-70">1 200 DH</span>{" "}
-                        (tarif normal).
-                      </p>
-                    </div>
-                    <FieldLegend variant="label" className="text-base sm:text-sm">
                       Êtes-vous prêt(e) à investir 500 DH pour une consultation
                       avec l&apos;expert M. Samir Benmakhlouf ?
-                    </FieldLegend>
-                    <RadioGroup
-                      className={radioGroupLayout}
-                      name="investment500"
+                    </FieldLabel>
+                    <select
+                      id="investment500"
                       value={form.investment500}
-                      onValueChange={(v) => update("investment500", v)}
+                      onChange={(e) => update("investment500", e.target.value)}
+                      className={nativeSelectClass}
                     >
-                      {INVESTMENT_500_OPTIONS.map((opt) => {
-                        const id = `study-invest-${opt.value}`;
-                        return (
-                          <FieldLabel key={opt.value} htmlFor={id}>
-                            <Field orientation="horizontal">
-                              <FieldContent>
-                                <FieldTitle>{opt.label}</FieldTitle>
-                              </FieldContent>
-                              <RadioGroupItem
-                                value={opt.value}
-                                id={id}
-                                className="size-5 sm:size-4"
-                              />
-                            </Field>
-                          </FieldLabel>
-                        );
-                      })}
-                    </RadioGroup>
-                  </FieldSet>
+                      <option value="">— Choisir —</option>
+                      {INVESTMENT_500_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
 
                   {showConsultationFormat && (
                     <Field>
@@ -687,26 +652,21 @@ export function StudyAbroadForm() {
                       >
                         Si oui, vous préférez la consultation :
                       </FieldLabel>
-                      <Select
-                        value={form.consultationFormat || undefined}
-                        onValueChange={(v) =>
-                          update("consultationFormat", v)
+                      <select
+                        id="consultation-format"
+                        value={form.consultationFormat}
+                        onChange={(e) =>
+                          update("consultationFormat", e.target.value)
                         }
+                        className={nativeSelectClass}
                       >
-                        <SelectTrigger
-                          id="consultation-format"
-                          className="h-10 w-full min-w-0 text-base sm:h-9 sm:text-sm"
-                        >
-                          <SelectValue placeholder="— Choisir —" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {FORMAT_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        <option value="">— Choisir —</option>
+                        {FORMAT_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
                     </Field>
                   )}
                 </div>

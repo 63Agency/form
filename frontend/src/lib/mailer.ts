@@ -121,7 +121,6 @@ export async function sendBookingConfirmation(
         de coaching est confirmée.
       </p>
       <ul>
-        <li><strong>Client :</strong> ${escapeHtml(booking.full_name)}</li>
         <li><strong>Date de la session :</strong> ${escapeHtml(dateLabel)}</li>
         <li><strong>Heure de la session :</strong> ${escapeHtml(timeLabel)}</li>
         <li><strong>Durée :</strong> ${SESSION_DURATION_MINUTES} minutes</li>
