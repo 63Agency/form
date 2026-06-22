@@ -76,8 +76,9 @@ const COUNTRY_OPTIONS = [
   "Espagne",
   "Allemagne",
   "Turquie",
-  "Pays-Bas",
-  "Belgique",
+  "Royaume-Uni",
+  "États-Unis",
+  "Chine",
   "Autre",
 ] as const;
 
